@@ -1,3 +1,21 @@
+[project]
+name = "sample-aca-fastapi-extid"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "black",
+    "ruff",
+"pytest",
+"coverage",
+"pytest-cov",
+"pre-commit"
+]
+
 [tool.black]
 line-length = 120
 target-version = ["py311"]
@@ -6,7 +24,7 @@ src = ["src"]
 [tool.ruff]
 line-length = 120
 target-version = "py311"
-select = ["E", "F", "I", "UP"]
+lint.select = ["E", "F", "I", "UP"]
 
 [tool.pytest.ini_options]
 addopts = "-ra --cov=src"
