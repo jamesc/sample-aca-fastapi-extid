@@ -10,7 +10,7 @@ dependencies = []
 dev = [
     "black",
     "ruff",
-"pytest",
+"pytest","httpx",
 "coverage",
 "pytest-cov",
 "pre-commit"
