@@ -27,8 +27,8 @@ jobs:
             python3 -m pip install uv
             uv sync
         - name: Lint with ruff
-          run: source .venv/bin/activate && ruff check .
+          run: uv run ruff check .
         - name: Check formatting with black
-          run: source .venv/bin/activate && black . --check --verbose
+          run: uv run black . --check --verbose
         - name: Run Pytest tests
-          run: source .venv/bin/activate && python3 -m pytest
+          run: uv run python3 -m pytest
