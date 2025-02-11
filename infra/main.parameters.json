@@ -8,8 +8,26 @@
     "location": {
       "value": "${AZURE_LOCATION}"
     },
+    "principalId": {
+      "value": "${AZURE_PRINCIPAL_ID}"
+    },
+    "keyVaultName": {
+      "value": "${AZURE_KEY_VAULT_NAME}"
+    },
     "apiAppExists": {
       "value": "${SERVICE_API_RESOURCE_EXISTS=false}"
+    },
+    "authClientId": {
+      "value": "${AZURE_CLIENT_APP_ID}"
+    },
+    "authClientSecret": {
+      "value": "${AZURE_CLIENT_APP_SECRET}"
+    },
+    "authTenantId": {
+      "value": "${AZURE_AUTH_TENANT_ID}"
+    },
+    "loginEndpoint": {
+      "value": "${AZURE_AUTH_LOGIN_ENDPOINT}"
     }
   }
 }
