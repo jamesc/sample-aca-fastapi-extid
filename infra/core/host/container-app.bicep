@@ -66,6 +66,10 @@ param revisionMode string = 'Single'
 @secure()
 param secrets object = {}
 
+@description('The keyvault identities required for the container')
+@secure()
+param keyvaultIdentities object = {}
+
 @description('The service binds associated with the container')
 param serviceBinds array = []
 
@@ -85,6 +89,17 @@ var usePrivateRegistry = !empty(identityName) && !empty(containerRegistryName)
 // Automatically set to `UserAssigned` when an `identityName` has been set
 var normalizedIdentityType = !empty(identityName) ? 'UserAssigned' : identityType
 
+var keyvalueSecrets = [for secret in items(secrets): {
+  name: secret.key
+  value: secret.value
+}]
+
+var keyvaultIdentitySecrets = [for secret in items(keyvaultIdentities): {
+  name: secret.key
+  keyVaultUrl: secret.value.keyVaultUrl
+  identity: secret.value.identity
+}]
+
 module containerRegistryAccess '../security/registry-access.bicep' = if (usePrivateRegistry) {
   name: '${deployment().name}-registry-access'
   params: {
@@ -99,7 +114,7 @@ resource app 'Microsoft.App/containerApps@2023-05-02-preview' = {
   tags: tags
   // It is critical that the identity is granted ACR pull access before the app is created
   // otherwise the container app will throw a provision error
-  // This also forces us to use an user assigned managed identity since there would no way to 
+  // This also forces us to use an user assigned managed identity since there would no way to
   // provide the system assigned identity with the ACR pull access before the app is created
   dependsOn: usePrivateRegistry ? [ containerRegistryAccess ] : []
   identity: {
@@ -124,10 +139,7 @@ resource app 'Microsoft.App/containerApps@2023-05-02-preview' = {
         appProtocol: daprAppProtocol
         appPort: ingressEnabled ? targetPort : 0
       } : { enabled: false }
-      secrets: [for secret in items(secrets): {
-        name: secret.key
-        value: secret.value
-      }]
+      secrets: concat(keyvalueSecrets, keyvaultIdentitySecrets)
       service: !empty(serviceType) ? { type: serviceType } : null
       registries: usePrivateRegistry ? [
         {
