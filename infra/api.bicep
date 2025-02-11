@@ -7,10 +7,40 @@ param containerAppsEnvironmentName string
 param containerRegistryName string
 param serviceName string = 'api'
 param exists bool
+param azureKeyVaultName string
 
-resource apiIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
+param authClientId string
+@secure()
+param authClientSecret string
+param authClientSecretName string
+param authTenantId string
+param authTenantSubdomain string
+
+var openIdIssuer = 'https://${authTenantSubdomain}.ciamlogin.com/${authTenantId}/v2.0'
+
+resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' existing = {
+  name: azureKeyVaultName
+}
+
+resource apiIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
   name: identityName
-  location: location
+}
+
+module webKVAccess 'core/security/keyvault-access.bicep' = {
+  name: '${serviceName}-keyvault-access'
+  params: {
+    keyVaultName: keyVault.name
+    principalId: apiIdentity.properties.principalId
+  }
+}
+
+module authClientSecretStorage 'core/security/keyvault-secret.bicep' = if (!empty(authClientSecret)) {
+  name: 'secrets'
+  params: {
+    keyVaultName: azureKeyVaultName
+    name: authClientSecretName
+    secretValue: authClientSecret
+  }
 }
 
 module app 'core/host/container-app-upsert.bicep' = {
@@ -24,6 +54,25 @@ module app 'core/host/container-app-upsert.bicep' = {
     containerAppsEnvironmentName: containerAppsEnvironmentName
     containerRegistryName: containerRegistryName
     targetPort: 3100
+    keyvaultIdentities: {
+      'microsoft-provider-authentication-secret': {
+        keyVaultUrl: '${keyVault.properties.vaultUri}secrets/${authClientSecretName}'
+        identity: apiIdentity.id
+      }
+    }
+  }
+  dependsOn: [
+    webKVAccess
+  ]
+}
+
+module auth 'app/container-apps-auth.bicep' = {
+  name: '${serviceName}-container-apps-auth-module'
+  params: {
+    name: app.outputs.name
+    clientId: authClientId
+    clientSecretName: 'microsoft-provider-authentication-secret'
+    openIdIssuer: openIdIssuer
   }
 }
 
