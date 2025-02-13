@@ -1,45 +1,73 @@
-# Simple FastAPI container
+# Sample App - Authorization to an API endpoint for a console application using External ID
 
-This repository includes a simple Python FastAPI app with a single route that returns JSON.
-You can use this project as a starting point for your own APIs.
 
-The repository is designed for use with [Docker containers](https://www.docker.com/), both for local development and deployment, and includes infrastructure files for deployment to [Azure Container Apps](https://learn.microsoft.com/azure/container-apps/overview). 🐳
+This repository includes a simple Python FastAPI app with a single route (`/generate_name`) that returns JSON. The application is deployed to Azure Container Apps and uses App Services built-in Authentication to secure the endpoint using Microsoft Entra External ID.
 
-The code istested with [pytest](https://docs.pytest.org/en/7.2.x/),
-linted with [ruff](https://github.com/charliermarsh/ruff), and formatted with [black](https://black.readthedocs.io/en/stable/).
-Code quality issues are all checked with both [pre-commit](https://pre-commit.com/) and Github actions.
+It also contains a sample CLI application which shows how to access the application as a signed-in user from the command line, using Device Code flow to sign-in.
+
 
 ## Opening the project
 
 This project has [Dev Container support](https://code.visualstudio.com/docs/devcontainers/containers), so it will be be setup automatically if you open it in Github Codespaces or in local VS Code with the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers).
 
-If you're not using one of those options for opening the project, then you'll need to:
+### Authentication configuration
 
-1. Create a [Python virtual environment](https://docs.python.org/3/tutorial/venv.html#creating-virtual-environments) and activate it.
+You will create two application registations in Entra External ID, one for the API running in Azure Container Apps and one for the Console application. As part of this, you will grant permissions on the Console application to access the backend API.
 
-2. Install the requirements:
+You can follow the instructions in [Azure Container Apps documentation](https://learn.microsoft.com/en-us/azure/container-apps/authentication-entra) as follows:
+
+1. Create an app registration for the container app using ['Option 2: Use an existing registration created separately'](https://learn.microsoft.com/en-us/azure/container-apps/authentication-entra#-option-2-use-an-existing-registration-created-separately). At this stage, you don't need to add the Redirect URL mentioned in step 5 iv - we'll fill that in after deployment of our application. You can use `http://localhost` as a placeholder.
+
+    Note down the `client ID` and `client secret` and you'll need them when deploying the application.
+
+ 2. Create a app registration for the console CLI application using ['Configure client apps to access your container app -Native client application'](https://learn.microsoft.com/en-us/azure/container-apps/authentication-entra#native-client-application). At this stage, you don't need to add the Redirect URL mentioned in step 3  - we'll fill that in after deployment of our application. You can use `http://localhost` as a placeholder.
+
+    Again, note down the `client id` of this  application as you'll need this when configuring the CLI application.
+
+### Deployment
+
+This repo is set up for deployment on Azure Container Apps using the configuration files in the `infra` folder.
+
+This diagram shows the architecture of the deployment:
+
+![Diagram of app architecture: Azure Container Apps environment, Azure Container App, Azure Container Registry, Container, and Key Vault](docs/readme_arch_diagram.png)
+
+Steps for deployment:
+
+1. Sign up for a [free Azure account](https://azure.microsoft.com/free/) and create an Azure Subscription.
+2. Install the [Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd). (If you open this repository in Codespaces or with the VS Code Dev Containers extension, that part will be done for you.)
+3. Login to Azure:
 
     ```shell
-    python3 -m pip install -r requirements-dev.txt
+    azd auth login
     ```
 
-3. Install the pre-commit hooks:
+4. Provision and deploy all the resources:
 
     ```shell
-    pre-commit install
+    azd up
     ```
 
-## Local development
+    It will prompt you to provide an `azd` environment name (like "fastapi-app"), select a subscription from your Azure account, and select a location (like "eastus").
 
-1. Run the local server:
+    You will be prompted for the following configuration information:
 
-    ```shell
-    fastapi dev src/api/main.py
-    ```
+    * `authTenantId`: The Tenant ID of the External ID tenant.
+    * `authTenantSubdomain`: The subdomain of the External ID tenant (This is the portion of the primary domain before the .onmicrosoft.com part, e.g. mytenant).
+    * `authClientId` : The Client ID of the External ID app for the API.
+    * `authClientSecret` : The Client Secret of the External ID app for the API.
 
-2. Click 'http://127.0.0.1:8000' in the terminal, which should open a new tab in the browser.
+    Then it will provision the resources in your account and deploy the latest code. If you get an error with deployment, changing the location can help, as there may be availability constraints for some of the resources.
 
-3. Try the API at '/generate_name' and try passing in a parameter at the end of the URL, like '/generate_name?starts_with=N'.
+5. When `azd` has finished deploying, you'll see an endpoint URI in the command output. You should now add a redirect URI to both application registrations  of the form `<endpoint-uri>/.auth/login/aad/callback`. For example, `https://<hostname>.<region>.azurecontainerapps.io/.auth/login/aad/callback`.
+
+6. Update the configuration of the CLI client by modifying `cli/config.py` with your configuration details.
+
+7. Run the CLI application
+
+   ```shell
+   uv run -m cli.main
+   ```
 
 ### Local development with Docker
 
@@ -59,38 +87,10 @@ You need to either have Docker Desktop installed or have this open in Github Cod
     docker run --publish 3100:3100 fastapi-app
     ```
 
-### Deployment
 
-This repo is set up for deployment on Azure Container Apps using the configuration files in the `infra` folder.
+3. Click 'http://127.0.0.1:3100' in the terminal, which should open a new tab in the browser.
 
-This diagram shows the architecture of the deployment:
-
-![Diagram of app architecture: Azure Container Apps environment, Azure Container App, Azure Container Registry, Container, and Key Vault](readme_diagram.png)
-
-Steps for deployment:
-
-1. Sign up for a [free Azure account](https://azure.microsoft.com/free/) and create an Azure Subscription.
-2. Install the [Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd). (If you open this repository in Codespaces or with the VS Code Dev Containers extension, that part will be done for you.)
-3. Login to Azure:
-
-    ```shell
-    azd auth login
-    ```
-
-4. Provision and deploy all the resources:
-
-    ```shell
-    azd up
-    ```
-
-    It will prompt you to provide an `azd` environment name (like "fastapi-app"), select a subscription from your Azure account, and select a location (like "eastus"). Then it will provision the resources in your account and deploy the latest code. If you get an error with deployment, changing the location can help, as there may be availability constraints for some of the resources.
-
-5. When `azd` has finished deploying, you'll see an endpoint URI in the command output. Visit that URI, and you should see the API output! 🎉
-6. When you've made any changes to the app code, you can just run:
-
-    ```shell
-    azd deploy
-    ```
+4. Try the API at '/generate_name' and try passing in a parameter at the end of the URL, like '/generate_name?starts_with=N'.
 
 ### Costs
 

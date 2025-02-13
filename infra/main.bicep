@@ -14,11 +14,18 @@ param principalId string = ''
 
 param apiAppExists bool = false
 
+@description('The Client ID of the External ID app for the API.')
 param authClientId string
+
+@description('The Client Secret of the External ID app for the API.')
 @secure()
 param authClientSecret string
 param authClientSecretName string = 'AZURE-AUTH-CLIENT-SECRET'
+
+@description('The Tenant ID of the External ID tenant.')
 param authTenantId string
+
+@description('The subdomain of the External ID tenant (This is the portion of the primary domain before the .onmicrosoft.com part, e.g. mytenant)')
 param authTenantSubdomain string
 
 param keyVaultName string = ''
