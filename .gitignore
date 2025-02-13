@@ -3,3 +3,4 @@
 .azure
 __pycache__/
 .coverage
+config.json

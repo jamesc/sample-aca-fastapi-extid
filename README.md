@@ -16,11 +16,11 @@ You will create two application registations in Entra External ID, one for the A
 
 You can follow the instructions in [Azure Container Apps documentation](https://learn.microsoft.com/en-us/azure/container-apps/authentication-entra) as follows:
 
-1. Create an app registration for the container app using ['Option 2: Use an existing registration created separately'](https://learn.microsoft.com/en-us/azure/container-apps/authentication-entra#-option-2-use-an-existing-registration-created-separately). At this stage, you don't need to add the Redirect URL mentioned in step 5 iv - we'll fill that in after deployment of our application. You can use `http://localhost` as a placeholder.
+1. Create an app registration for the container app using ['Option 2: Use an existing registration created separately'](https://learn.microsoft.com/en-us/azure/container-apps/authentication-entra#-option-2-use-an-existing-registration-created-separately). At this stage, you don't need to add the Redirect URL mentioned in step 5 iv - we'll fill that in after deployment of our application.
 
     Note down the `client ID` and `client secret` and you'll need them when deploying the application.
 
- 2. Create a app registration for the console CLI application using ['Configure client apps to access your container app -Native client application'](https://learn.microsoft.com/en-us/azure/container-apps/authentication-entra#native-client-application). At this stage, you don't need to add the Redirect URL mentioned in step 3  - we'll fill that in after deployment of our application. You can use `http://localhost` as a placeholder.
+ 2. Create a app registration for the console CLI application using ['Configure client apps to access your container app -Native client application'](https://learn.microsoft.com/en-us/azure/container-apps/authentication-entra#native-client-application). At this stage, you don't need to add the Redirect URL mentioned in step 3  - we'll fill that in after deployment of our application, but you should add `http://localhost` so we can use interactive sign-in as an option.
 
     Again, note down the `client id` of this  application as you'll need this when configuring the CLI application.
 
@@ -61,13 +61,19 @@ Steps for deployment:
 
 5. When `azd` has finished deploying, you'll see an endpoint URI in the command output. You should now add a redirect URI to both application registrations  of the form `<endpoint-uri>/.auth/login/aad/callback`. For example, `https://<hostname>.<region>.azurecontainerapps.io/.auth/login/aad/callback`.
 
-6. Update the configuration of the CLI client by modifying `cli/config.py` with your configuration details.
+6. Create a configuration file containing your subdomain, client IDs and the URI of the API.  See `config.json.example` for the structure of the file. 
 
 7. Run the CLI application
 
    ```shell
-   uv run -m cli.main
+   uv run -m cli.main -c <CONFIG_FILE>
    ```
+
+   This will use interactive sign-in.  You can also switch to device code flow if on a device with no browser (e.g. GitHub Codespaces) with the `--with-device-code` option
+
+   ```shell
+   uv run -m cli.main -c <CONFIG_FILE> --with-device-code
+   ``` 
 
 ### Local development with Docker
 
