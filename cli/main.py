@@ -2,20 +2,19 @@
 # Sample console application that demonstrates how to sign in to an Azure Container Apps application using
 # the device code flow with an Entra External ID tenant.
 #
-# You should insert your own values for the following variables in `config.py`:
-# - CLIENT_ID: The Application (client) ID of the console app registration
+# You should provide a JSON config file with the following format:
+#  - CLIENT_ID: The Application (client) ID of the console app registration
 # - API_CLIENT_ID: The Application (client) ID of the API app registration
 # - TENANT_SUBDOMAIN: The subdomain of the External ID tenant
 # - API_URL: The URL of the API app hosted in Azure Container Apps
 #
 
+import argparse
 import json
 import sys
 
 import msal
 import requests
-
-from .config import config
 
 
 #
@@ -26,13 +25,26 @@ from .config import config
 #    the token is valid, Easy Auth will return an `authenticationToken` that we can use to call our API.
 # 3. Call our API at /generate_name with the `X-ZUMO-AUTH` header set to the `authenticationToken` we received in step 2
 #
-def main(config):
+def main():
+    parser = argparse.ArgumentParser(description="CLI Application to generate a name")
+
+    parser.add_argument("--config", "-c", help="Path to the config file")
+    parser.add_argument("--with-device-code", "-d", action="store_true", help="Use Device Code flow ")
+    args = parser.parse_args()
+
+    with open(args.config) as f:
+        config = json.load(f)
+
+    scope = f"api://{config['API_CLIENT_ID']}/user_impersonation"
     app = msal.PublicClientApplication(config["CLIENT_ID"], authority=construct_authority(config["TENANT_SUBDOMAIN"]))
 
-    access_token = get_access_token_device_code(app, f"api://{config['API_CLIENT_ID']}/user_impersonation")
+    access_token = None
+    if args.device_code:
+        access_token = get_access_token_device_code(app, scope)
+    else:
+        access_token = get_access_token_interactive(app, scope)
 
     authentication_token = get_authentication_token(config["API_URL"], access_token)
-
     if authentication_token:
         name = generate_name(config["API_URL"], authentication_token)
         print(f"Generated name: {name}")
@@ -78,6 +90,17 @@ def get_access_token_device_code(app, scope):
 
 
 #
+# Get an access token using the interactive flow
+#
+def get_access_token_interactive(app, scope):
+    result = app.acquire_token_interactive(scopes=[scope])
+    if "access_token" in result:
+        return result["access_token"]
+    else:
+        raise ValueError(f"Fail to acquire token: {result.get('error')}")
+
+
+#
 # Given an access token with has the appropriate scope to access the application, get
 # an authentication token from Easy Auth
 #
@@ -108,4 +131,4 @@ def construct_devicelogin(authority):
 
 
 if __name__ == "__main__":
-    main(config)
+    main()

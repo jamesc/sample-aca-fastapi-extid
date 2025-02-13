@@ -1,0 +1,6 @@
+{
+    "TENANT_SUBDOMAIN": "<DOMAIN HERE>",
+    "CLIENT_ID": "<CLIENT ID HERE>",  
+    "API_CLIENT_ID": "<CLIENT ID HERE>", 
+    "API_URL": "<URI of Container App HERE>"
+}
